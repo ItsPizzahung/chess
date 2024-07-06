@@ -27,6 +27,7 @@ public class ChessboardController implements Initializable {
                 square.setStyle("-fx-background-color: #" + fill.toString().substring(2)); // Convert to hex
 
                 chessboardGrid.add(square, col, row); // Add square to the grid
+                // test
             }
         }
     }
