@@ -2,14 +2,18 @@ package com.example.chess;
 
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Insets;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.RowConstraints;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.scene.image.Image ;
 
 import java.net.URL;
+import java.util.Objects;
 import java.util.ResourceBundle;
 
 public class ChessboardController implements Initializable {
@@ -22,9 +26,25 @@ public class ChessboardController implements Initializable {
         setupChessboardGrid();
         chessboardGrid.widthProperty().addListener((obs, oldWidth, newWidth) -> resizeSquares());
         chessboardGrid.heightProperty().addListener((obs, oldHeight, newHeight) -> resizeSquares());
+
+        // Add padding to the top of the grid
+//        chessboardGrid.setPadding(new Insets(30, 0, 0, 0)); // 30px padding at the top
+
     }
 
     private void setupChessboardGrid() {
+        // Define the initial state of the chessboard
+        String[][] initialState = {
+                {"br", "bn", "bb", "bq", "bk", "bb", "bn", "br"},
+                {"bp", "bp", "bp", "bp", "bp", "bp", "bp", "bp"},
+                {null, null, null, null, null, null, null, null},
+                {null, null, null, null, null, null, null, null},
+                {null, null, null, null, null, null, null, null},
+                {null, null, null, null, null, null, null, null},
+                {"wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp"},
+                {"wr", "wn", "wb", "wq", "wk", "wb", "wn", "wr"}
+        };
+
         for (int row = 0; row < 8; row++) {
             RowConstraints rowConstraints = new RowConstraints();
             rowConstraints.setVgrow(Priority.ALWAYS);
@@ -42,10 +62,30 @@ public class ChessboardController implements Initializable {
                 square.setPrefSize(100, 100); // Set preferred square size
 
                 // Alternating colors (chessboard pattern)
-                Color fill = ((row + col) % 2 == 0) ? Color.WHITE : Color.DARKGRAY;
+                Color fill = ((row + col) % 2 == 0) ? Color.BLANCHEDALMOND: Color.BURLYWOOD;
                 square.setStyle("-fx-background-color: #" + fill.toString().substring(2)); // Convert to hex
 
                 chessboardGrid.add(square, col, row); // Add square to the grid
+
+                // If there is a piece on this square, add it
+                String piece = initialState[row][col];
+                if (piece != null) {
+                    // Load the image
+                    Image image = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/pieces/" + piece + ".png")));
+                    // Create an ImageView object
+                    ImageView imageView = new ImageView(image);
+
+                    // Bind the size of the ImageView to the size of the square
+                    imageView.fitWidthProperty().bind(square.widthProperty());
+                    imageView.fitHeightProperty().bind(square.heightProperty());
+                    imageView.setPreserveRatio(true); // Preserve aspect ratio
+
+                    // Add the ImageView object to the pane
+                    square.getChildren().add(imageView);
+
+                    // Center the ImageView in the square
+                    GridPane.setMargin(imageView, new Insets(10)); // Add 10px margin on all sides
+                }
             }
         }
     }
