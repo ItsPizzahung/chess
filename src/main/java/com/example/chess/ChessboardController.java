@@ -14,7 +14,7 @@ import java.util.ResourceBundle;
 public class ChessboardController implements Initializable {
 
     @FXML
-    private GridPane chessboardGrid; // Inject the GridPane from FXML
+    private GridPane chessboardGrid;
 
     private ChessPiece[][] chessboard = new ChessPiece[8][8];
 
@@ -24,7 +24,6 @@ public class ChessboardController implements Initializable {
     }
 
     private void setupChessboardGrid() {
-        // Define the initial state of the chessboard
         String[][] initialState = {
                 {"br", "bn", "bb", "bq", "bk", "bb", "bn", "br"},
                 {"bp", "bp", "bp", "bp", "bp", "bp", "bp", "bp"},
@@ -39,25 +38,21 @@ public class ChessboardController implements Initializable {
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 Pane square = new Pane();
-                square.setMinSize(50, 50); // Set minimum square size
-                square.setPrefSize(100, 100); // Set preferred square size
+                square.setMinSize(50, 50);
+                square.setPrefSize(100, 100);
 
-                // Alternating colors (chessboard pattern)
-                Color fill = ((row + col) % 2 == 0) ? Color.BLANCHEDALMOND: Color.BURLYWOOD;
-                square.setStyle("-fx-background-color: #" + fill.toString().substring(2)); // Convert to hex
+                Color fill = ((row + col) % 2 == 0) ? Color.BLANCHEDALMOND : Color.BURLYWOOD;
+                square.setStyle("-fx-background-color: #" + fill.toString().substring(2));
 
-                chessboardGrid.add(square, col, row); // Add square to the grid
+                chessboardGrid.add(square, col, row);
 
                 String piece = initialState[row][col];
                 if (piece != null) {
-                    // Load the image
                     Image image = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/pieces/" + piece + ".png")));
-                    // Create a ChessPiece object
-                    ChessPiece chessPiece = new ChessPiece(image, chessboardGrid);
+                    ChessPiece chessPiece = new ChessPiece(image, chessboardGrid, piece, row, col, chessboard);
                     chessboard[row][col] = chessPiece;
                     square.getChildren().add(chessPiece.getImageView());
 
-                    // Bind the size of the ChessPiece to the size of the square
                     chessPiece.getImageView().fitWidthProperty().bind(square.widthProperty());
                     chessPiece.getImageView().fitHeightProperty().bind(square.heightProperty());
                 }
