@@ -103,7 +103,6 @@ public class ChessboardController implements Initializable {
 
 
 
-
     private void setupPieceDragAndDrop(ChessPiece chessPiece) {
         ImageView imageView = chessPiece.getImageView();
 
