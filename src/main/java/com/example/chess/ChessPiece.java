@@ -1,9 +1,6 @@
 package com.example.chess;
-
-import javafx.scene.Cursor;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.GridPane;
+
 
 public class ChessPiece {
     private String type;
@@ -41,4 +38,5 @@ public class ChessPiece {
     public ImageView getImageView() {
         return imageView;
     }
+
 }

@@ -24,11 +24,14 @@ public class ChessboardController implements Initializable {
     private ChessPiece draggedPiece;
     private int draggedPieceOriginalRow;
     private int draggedPieceOriginalCol;
+//    private Pane dragLayer;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         setupChessboardGrid();
+//        setupDragLayer();
     }
+
 
     private void setupChessboardGrid() {
         String[][] initialState = {
@@ -45,11 +48,12 @@ public class ChessboardController implements Initializable {
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 Pane square = new Pane();
-                square.setMinSize(50, 50);
+                square.setMinSize(0, 0);
                 square.setPrefSize(100, 100);
 
                 Color fill = ((row + col) % 2 == 0) ? Color.BLANCHEDALMOND : Color.BURLYWOOD;
                 square.setStyle("-fx-background-color: #" + fill.toString().substring(2));
+
 
                 chessboardGrid.add(square, col, row);
 
@@ -74,6 +78,32 @@ public class ChessboardController implements Initializable {
         }
     }
 
+//    private void setupDragLayer() {
+//        dragLayer = new Pane();
+//        dragLayer.setPickOnBounds(false);
+//        chessboardGrid.getChildren().add(dragLayer);
+//    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     private void setupPieceDragAndDrop(ChessPiece chessPiece) {
         ImageView imageView = chessPiece.getImageView();
 
@@ -97,19 +127,25 @@ public class ChessboardController implements Initializable {
             draggedPieceOriginalCol = chessPiece.getCol();
             mouseAnchorX[0] = event.getSceneX() - imageView.getTranslateX();
             mouseAnchorY[0] = event.getSceneY() - imageView.getTranslateY();
+
+            // Remove the piece from its current square
+            Pane currentSquare = getSquare(draggedPieceOriginalRow, draggedPieceOriginalCol);
+            currentSquare.toFront();
+//            if (currentSquare != null) {
+//                currentSquare.getChildren().remove(imageView);
+//            }
+//            dragLayer.getChildren().add(imageView);
+
         });
 
         // When mouse is dragged, follow the cursor
         imageView.setOnMouseDragged(event -> {
+
             double newTranslateX = event.getSceneX() - mouseAnchorX[0];
             double newTranslateY = event.getSceneY() - mouseAnchorY[0];
 
             imageView.setTranslateX(newTranslateX);
             imageView.setTranslateY(newTranslateY);
-
-            imageView.setTranslateZ(200);
-            System.out.println(newTranslateX + " " + newTranslateY + " " + imageView.getTranslateZ());
-
         });
 
         // When mouse is released, snap to the nearest valid position
@@ -143,13 +179,14 @@ public class ChessboardController implements Initializable {
             imageView.setTranslateX(0);
             imageView.setTranslateY(0);
 
-            Pane oldSquare = getSquare(draggedPieceOriginalRow, draggedPieceOriginalCol);
+            // Add the piece to the new square
+            Pane currentSquare = getSquare(draggedPieceOriginalRow, draggedPieceOriginalCol);
             Pane newSquare = getSquare(targetRow, targetCol);
 
-            if (oldSquare != null) {
-                oldSquare.getChildren().remove(imageView);
+//            dragLayer.getChildren().remove(imageView);
+            if (currentSquare != null) {
+                currentSquare.getChildren().remove(imageView);
             }
-
             if (newSquare != null) {
                 newSquare.getChildren().add(imageView);
             }
@@ -199,6 +236,12 @@ public class ChessboardController implements Initializable {
             }
         });
     }
+
+
+
+
+
+
     private boolean isValidMove(ChessPiece piece, int newRow, int newCol) {
         // Check if the new position is within the bounds of the chessboard
         if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) {
@@ -211,7 +254,30 @@ public class ChessboardController implements Initializable {
             return false; // Prevent moving to a square occupied by a piece of the same color
         }
 
-        // Add more specific movement rules for each piece type here (optional)
+
+        // Pawn movement logic
+        if (piece.getType().charAt(1) == 'p') {
+            int direction = piece.getType().charAt(0) == 'w' ? -1 : 1; // White moves up (-1), Black moves down (+1)
+            int startRow = piece.getType().charAt(0) == 'w' ? 6 : 1;    // White pawns start at row 6, Black at row 1
+
+            // Move forward 1 square
+            if (newCol == piece.getCol() && newRow == piece.getRow() + direction) {
+                return targetPiece == null; // The square must be empty
+            }
+
+            // Move forward 2 squares from the initial position
+            if (newCol == piece.getCol() && piece.getRow() == startRow && newRow == piece.getRow() + 2 * direction) {
+                return targetPiece == null && chessboard[piece.getRow() + direction][newCol] == null; // Both squares must be empty
+            }
+
+            // Diagonal capture
+            if (Math.abs(newCol - piece.getCol()) == 1 && newRow == piece.getRow() + direction) {
+                return targetPiece != null && targetPiece.getType().charAt(0) != piece.getType().charAt(0); // Must capture opposite color
+            }
+
+            return false; // All other moves are invalid for a pawn
+        }
+
 
         return true;
     }
@@ -274,6 +340,10 @@ public class ChessboardController implements Initializable {
             if (GridPane.getRowIndex(node) == row && GridPane.getColumnIndex(node) == col) {
                 return (Pane) node;
             }
+            // know value row and col,
+            // go through every single node/pane in the gridpane
+            // if the row and col of the node is the same as the row and col we are looking for
+            // return the node/pane
         }
         return null;
     }
