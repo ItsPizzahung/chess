@@ -9,9 +9,12 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.ResourceBundle;
 
@@ -25,6 +28,8 @@ public class ChessboardController implements Initializable {
     private int draggedPieceOriginalRow;
     private int draggedPieceOriginalCol;
 //    private Pane dragLayer;
+
+    private boolean isWhiteTurn = true;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -78,28 +83,36 @@ public class ChessboardController implements Initializable {
         }
     }
 
-//    private void setupDragLayer() {
-//        dragLayer = new Pane();
-//        dragLayer.setPickOnBounds(false);
-//        chessboardGrid.getChildren().add(dragLayer);
-//    }
+    private void showAvailableMoves(ChessPiece piece) {
+        List<int[]> availableMoves = new ArrayList<>();
+        int row = piece.getRow();
+        int col = piece.getCol();
 
+        // Check all possible moves for the piece
+        for (int newRow = 0; newRow < 8; newRow++) {
+            for (int newCol = 0; newCol < 8; newCol++) {
+                if (isValidMove(piece, newRow, newCol)) {
+                    availableMoves.add(new int[]{newRow, newCol});
+                }
+            }
+        }
 
+        // Highlight the available moves
+        for (int[] move : availableMoves) {
+            int newRow = move[0];
+            int newCol = move[1];
 
+            Pane square = getSquare(newRow, newCol);
+            if (square != null) {
+                Rectangle highlight = new Rectangle();
+                highlight.setFill(Color.rgb(0, 255, 0, 0.5));
+                highlight.widthProperty().bind(square.widthProperty());
+                highlight.heightProperty().bind(square.heightProperty());
+                square.getChildren().add(highlight);
+            }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+        }
+    }
 
 
 
@@ -118,7 +131,7 @@ public class ChessboardController implements Initializable {
         scaleDown.setToX(1.0);
         scaleDown.setToY(1.0);
 
-        // When mouse is pressed, apply floating effect
+        // When mouse is pressed, apply floating effect and show available moves
         imageView.setOnMousePressed(event -> {
             scaleUp.play();
             draggedPiece = chessPiece;
@@ -130,19 +143,19 @@ public class ChessboardController implements Initializable {
             // Remove the piece from its current square
             Pane currentSquare = getSquare(draggedPieceOriginalRow, draggedPieceOriginalCol);
             currentSquare.toFront();
-//            if (currentSquare != null) {
-//                currentSquare.getChildren().remove(imageView);
-//            }
-//            dragLayer.getChildren().add(imageView);
+
+
+
+            // Show available moves
+            showAvailableMoves(chessPiece);
+
 
         });
 
         // When mouse is dragged, follow the cursor
         imageView.setOnMouseDragged(event -> {
-
             double newTranslateX = event.getSceneX() - mouseAnchorX[0];
             double newTranslateY = event.getSceneY() - mouseAnchorY[0];
-
             imageView.setTranslateX(newTranslateX);
             imageView.setTranslateY(newTranslateY);
         });
@@ -150,6 +163,8 @@ public class ChessboardController implements Initializable {
         // When mouse is released, snap to the nearest valid position
         imageView.setOnMouseReleased(event -> {
             scaleDown.play(); // Reset the size
+
+
 
             // Calculate the nearest column and row
             double sceneX = event.getSceneX();
@@ -164,6 +179,7 @@ public class ChessboardController implements Initializable {
             if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8 || !isValidMove(chessPiece, newRow, newCol)) {
                 newRow = draggedPieceOriginalRow;
                 newCol = draggedPieceOriginalCol;
+
             }
 
             // Snap the piece to the final position
@@ -178,20 +194,46 @@ public class ChessboardController implements Initializable {
             imageView.setTranslateX(0);
             imageView.setTranslateY(0);
 
+            // remove available moves
+            for (Node node : chessboardGrid.getChildren()) {
+                if (node instanceof Pane) {
+                    Pane square = (Pane) node;
+                    square.getChildren().removeIf(child -> child instanceof Rectangle);
+                }
+            }
+
+
             // Add the piece to the new square
             Pane currentSquare = getSquare(draggedPieceOriginalRow, draggedPieceOriginalCol);
             Pane newSquare = getSquare(targetRow, targetCol);
 
-//            dragLayer.getChildren().remove(imageView);
             if (currentSquare != null) {
                 currentSquare.getChildren().remove(imageView);
             }
+
+            if(newSquare != currentSquare) {
+                isWhiteTurn = !isWhiteTurn;
+            }
+            // Get image view of the target piece
+            ImageView targetPieceImageView = null;
+            if (newSquare != null && newSquare.getChildren().size() > 0) {
+                targetPieceImageView = (ImageView) newSquare.getChildren().get(0);
+            }
+
+            // Remove the target piece from the board
+            if (targetPieceImageView != null) {
+                newSquare.getChildren().remove(targetPieceImageView);
+            }
+
             if (newSquare != null) {
                 newSquare.getChildren().add(imageView);
             }
+
+
+//            capturePiece(chessPiece, targetRow, targetCol);
+
         });
     }
-
 
 
 
@@ -242,6 +284,13 @@ public class ChessboardController implements Initializable {
 
 
     private boolean isValidMove(ChessPiece piece, int newRow, int newCol) {
+        // white moves first
+        if (isWhiteTurn && piece.getType().charAt(0) == 'b') {
+            return false;
+        } else if (!isWhiteTurn && piece.getType().charAt(0) == 'w') {
+            return false;
+        }
+
         // Check if the new position is within the bounds of the chessboard
         if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) {
             return false;
@@ -275,6 +324,100 @@ public class ChessboardController implements Initializable {
             }
 
             return false; // All other moves are invalid for a pawn
+        }
+
+        // Rook movement logic
+        if (piece.getType().charAt(1) == 'r') {
+            // Rooks can move horizontally or vertically
+            if (newRow != piece.getRow() && newCol != piece.getCol()) {
+                return false; // Rooks cannot move diagonally
+            }
+
+            // Check for obstructions along the path
+            int rowStep = newRow == piece.getRow() ? 0 : (newRow > piece.getRow() ? 1 : -1);
+            int colStep = newCol == piece.getCol() ? 0 : (newCol > piece.getCol() ? 1 : -1);
+
+            int currentRow = piece.getRow() + rowStep;
+            int currentCol = piece.getCol() + colStep;
+
+            while (currentRow != newRow || currentCol != newCol) {
+                if (chessboard[currentRow][currentCol] != null) {
+                    return false; // Path is obstructed
+                }
+                currentRow += rowStep;
+                currentCol += colStep;
+            }
+
+            return targetPiece == null || targetPiece.getType().charAt(0) != piece.getType().charAt(0); // Must be empty or capture opposite color
+
+        }
+
+        // Knight movement logic
+        if (piece.getType().charAt(1) == 'n') {
+            // Knights move in an L-shape: 2 squares in one direction, then 1 square perpendicular
+            int rowDiff = Math.abs(newRow - piece.getRow());
+            int colDiff = Math.abs(newCol - piece.getCol());
+
+            return (rowDiff == 2 && colDiff == 1) || (rowDiff == 1 && colDiff == 2); // Valid L-shape
+        }
+
+        // Bishop movement logic
+        if (piece.getType().charAt(1) == 'b') {
+            // Bishops move diagonally
+            if (Math.abs(newRow - piece.getRow()) != Math.abs(newCol - piece.getCol())) {
+                return false; // Bishops must move diagonally
+            }
+
+            // Check for obstructions along the path
+            int rowStep = newRow > piece.getRow() ? 1 : -1;
+            int colStep = newCol > piece.getCol() ? 1 : -1;
+
+            int currentRow = piece.getRow() + rowStep;
+            int currentCol = piece.getCol() + colStep;
+
+            while (currentRow != newRow || currentCol != newCol) {
+                if (chessboard[currentRow][currentCol] != null) {
+                    return false; // Path is obstructed
+                }
+                currentRow += rowStep;
+                currentCol += colStep;
+            }
+
+            return targetPiece == null || targetPiece.getType().charAt(0) != piece.getType().charAt(0); // Must be empty or capture opposite color
+        }
+
+        // Queen movement logic
+        if (piece.getType().charAt(1) == 'q') {
+            // Queens can move horizontally, vertically, or diagonally
+            if (newRow != piece.getRow() && newCol != piece.getCol() && Math.abs(newRow - piece.getRow()) != Math.abs(newCol - piece.getCol())) {
+                return false; // Queens must move in a straight line
+            }
+
+            // Check for obstructions along the path
+            int rowStep = newRow == piece.getRow() ? 0 : (newRow > piece.getRow() ? 1 : -1);
+            int colStep = newCol == piece.getCol() ? 0 : (newCol > piece.getCol() ? 1 : -1);
+
+            int currentRow = piece.getRow() + rowStep;
+            int currentCol = piece.getCol() + colStep;
+
+            while (currentRow != newRow || currentCol != newCol) {
+                if (chessboard[currentRow][currentCol] != null) {
+                    return false; // Path is obstructed
+                }
+                currentRow += rowStep;
+                currentCol += colStep;
+            }
+
+            return targetPiece == null || targetPiece.getType().charAt(0) != piece.getType().charAt(0); // Must be empty or capture opposite color
+        }
+
+        // King movement logic
+        if (piece.getType().charAt(1) == 'k') {
+            // Kings can move 1 square in any direction
+            int rowDiff = Math.abs(newRow - piece.getRow());
+            int colDiff = Math.abs(newCol - piece.getCol());
+
+            return rowDiff <= 1 && colDiff <= 1; // Valid 1-square move
         }
 
 
