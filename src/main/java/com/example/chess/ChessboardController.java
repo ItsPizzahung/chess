@@ -146,6 +146,33 @@ public class ChessboardController implements Initializable {
         return false;
     }
 
+    private boolean isEnPass(ChessPiece piece, int newRow, int newCol) {
+        // Check if the move is valid and resolves the check situation
+        ChessPiece temp = chessboard[newRow][newCol];
+        chessboard[newRow][newCol] = piece;
+        chessboard[piece.getRow()][piece.getCol()] = null;
+        piece.setRow(newRow);
+        piece.setCol(newCol);
+
+        // Check if the king is still in check after the move
+        ChessPiece opponentKing = getOpponentKing(piece.getType().charAt(0));
+        boolean check = isCheck(piece, newRow, newCol);  // Recheck if the move leaves the king in check
+
+        // Undo the move
+        chessboard[piece.getRow()][piece.getCol()] = piece;
+        chessboard[newRow][newCol] = temp;
+        piece.setRow(newRow);
+        piece.setCol(newCol);
+
+        if (check) {
+            // Block the move if it doesn't resolve the check situation
+            System.out.println("Move does not escape check.");
+            return false;  // Cannot escape check
+        } else {
+            // Allow the move if it escapes the check
+            return true;  // Escape the check situation
+        }
+    }
 
     private void highlightKingSquare(ChessPiece king) {
         System.out.println("King position: Row = " + king.getRow() + ", Col = " + king.getCol());
@@ -165,7 +192,6 @@ public class ChessboardController implements Initializable {
             } else {
                 previousCheckKing.setStyle("-fx-background-color: BURLYWOOD;"); // Black square
             }
-//           previousCheckKing.setStyle("-fx-background-color: transparent;");
     }
 
 
@@ -288,6 +314,14 @@ public class ChessboardController implements Initializable {
 
             if (isCheck(chessPiece, newRow, newCol)) {
                 System.out.println("Check!");
+            }
+
+            if (!isEnPass(chessPiece, newRow, newCol)) {
+                System.out.println("Move blocked due to check situation!");
+                newRow = draggedPieceOriginalRow;
+                newCol = draggedPieceOriginalCol;
+            } else {
+                System.out.println("Move is valid and passes check!");
             }
             // Check if the move puts the opponent in check
 
