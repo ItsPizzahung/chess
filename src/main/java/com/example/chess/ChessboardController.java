@@ -22,7 +22,7 @@ public class ChessboardController implements Initializable {
 
     @FXML
     private GridPane chessboardGrid;
-
+    private Pane previousCheckKing;
     private ChessPiece[][] chessboard = new ChessPiece[8][8];
     private ChessPiece draggedPiece;
     private int draggedPieceOriginalRow;
@@ -94,8 +94,8 @@ public class ChessboardController implements Initializable {
         }
         return null;
     }
-    private boolean isCheck(ChessPiece piece, int newRow, int newCol) {
 
+    private boolean isCheck(ChessPiece piece, int newRow, int newCol) {
 
         // Get the opponent's king
         ChessPiece opponentKing = getOpponentKing(piece.getType().charAt(0));
@@ -148,32 +148,16 @@ public class ChessboardController implements Initializable {
     private void highlightKingSquare(ChessPiece king) {
         System.out.println("King position: Row = " + king.getRow() + ", Col = " + king.getCol());
         Pane kingSquare = getSquare(king.getRow(), king.getCol());
-
-            System.out.println("King's square found.");
-            Rectangle highlight = new Rectangle();
-
-//                highlight.widthProperty().bind(kingSquare.widthProperty());
-//                highlight.heightProperty().bind(kingSquare.heightProperty());
-//                kingSquare.getChildren().add(highlight);
-//                highlight.toFront(); // Bring highlight to front
-
-                // Force pane to layout correctly
+        previousCheckKing = kingSquare;
+        System.out.println("King's square found.");
         kingSquare.setStyle("-fx-background-color: red;");
-
-//        kingSquare.setStyle("-fx-border-color: transparent;");
-                System.out.println("Highlight applied and toFront called.");
-//                highlight.setStyle("");  // Clears any previously applied styles
-//                highlight.setFill(Color.RED);  // Ensures red is applied
 
     }
 
     private void removeCheckHighlight(ChessPiece king) {
-        Pane kingSquare = getSquare(king.getRow(), king.getCol());
-        if (kingSquare != null) {
-            kingSquare.getChildren().removeIf(node -> node instanceof Rectangle);
-        }
+        if(previousCheckKing != null)
+           previousCheckKing.setStyle("-fx-background-color: transparent;");
     }
-
 
 
     private ChessPiece getOpponentKing(char player) {
@@ -188,6 +172,7 @@ public class ChessboardController implements Initializable {
         }
         return null;
     }
+
     private void showAvailableMoves(ChessPiece piece) {
         List<int[]> availableMoves = new ArrayList<>();
         int row = piece.getRow();
@@ -220,7 +205,6 @@ public class ChessboardController implements Initializable {
     }
 
 
-
     private void setupPieceDragAndDrop(ChessPiece chessPiece) {
         ImageView imageView = chessPiece.getImageView();
 
@@ -248,7 +232,6 @@ public class ChessboardController implements Initializable {
             // Remove the piece from its current square
             Pane currentSquare = getSquare(draggedPieceOriginalRow, draggedPieceOriginalCol);
             currentSquare.toFront();
-
 
 
             // Show available moves
@@ -329,7 +312,7 @@ public class ChessboardController implements Initializable {
                 currentSquare.getChildren().remove(imageView);
             }
 
-            if(newSquare != currentSquare) {
+            if (newSquare != currentSquare) {
                 isWhiteTurn = !isWhiteTurn;
             }
 
@@ -358,8 +341,6 @@ public class ChessboardController implements Initializable {
 
         });
     }
-
-
 
 
     private void movePieceWithAnimation(ChessPiece piece, int newRow, int newCol) {
@@ -403,10 +384,6 @@ public class ChessboardController implements Initializable {
     }
 
 
-
-
-
-
     private boolean isValidMove(ChessPiece piece, int newRow, int newCol) {
         // white moves first
         if (isWhiteTurn && piece.getType().charAt(0) == 'b') {
@@ -446,8 +423,6 @@ public class ChessboardController implements Initializable {
             if (Math.abs(newCol - piece.getCol()) == 1 && newRow == piece.getRow() + direction) {
                 return targetPiece != null && targetPiece.getType().charAt(0) != piece.getType().charAt(0); // Must capture opposite color
             }
-
-
 
 
             return false; // All other moves are invalid for a pawn
