@@ -31,6 +31,8 @@ public class ChessboardController implements Initializable {
 
     private boolean isWhiteTurn = true;
 
+    int pRow;
+    int pCol;
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         setupChessboardGrid();
@@ -149,6 +151,8 @@ public class ChessboardController implements Initializable {
         System.out.println("King position: Row = " + king.getRow() + ", Col = " + king.getCol());
         Pane kingSquare = getSquare(king.getRow(), king.getCol());
         previousCheckKing = kingSquare;
+        pRow = king.getRow();
+        pCol = king.getCol();
         System.out.println("King's square found.");
         kingSquare.setStyle("-fx-background-color: red;");
 
@@ -156,7 +160,12 @@ public class ChessboardController implements Initializable {
 
     private void removeCheckHighlight(ChessPiece king) {
         if(previousCheckKing != null)
-           previousCheckKing.setStyle("-fx-background-color: transparent;");
+            if ((pRow + pCol) % 2 == 0) {
+                previousCheckKing.setStyle("-fx-background-color: BLANCHEDALMOND;"); // White square
+            } else {
+                previousCheckKing.setStyle("-fx-background-color: BURLYWOOD;"); // Black square
+            }
+//           previousCheckKing.setStyle("-fx-background-color: transparent;");
     }
 
 
