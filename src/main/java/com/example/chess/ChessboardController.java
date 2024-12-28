@@ -27,16 +27,12 @@ public class ChessboardController implements Initializable {
     private ChessPiece draggedPiece;
     private int draggedPieceOriginalRow;
     private int draggedPieceOriginalCol;
-//    private Pane dragLayer;
-
     private boolean isWhiteTurn = true;
-
     int pRow;
     int pCol;
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         setupChessboardGrid();
-//        setupDragLayer();
     }
 
 
@@ -97,23 +93,154 @@ public class ChessboardController implements Initializable {
         return null;
     }
 
-    private boolean isCheck(ChessPiece piece, int newRow, int newCol) {
+    private List<int[]> getPathToKing(ChessPiece checkingPiece, ChessPiece king) {
+        List<int[]> path = new ArrayList<>();
 
+        int rowDirection = Integer.compare(king.getRow(), checkingPiece.getRow());
+        int colDirection = Integer.compare(king.getCol(), checkingPiece.getCol());
+
+        int currentRow = checkingPiece.getRow() + rowDirection;
+        int currentCol = checkingPiece.getCol() + colDirection;
+
+        while (currentRow != king.getRow() || currentCol != king.getCol()) {
+            path.add(new int[]{currentRow, currentCol});
+            currentRow += rowDirection;
+            currentCol += colDirection;
+        }
+
+        return path;
+    }
+
+    private boolean isSquareUnderAttack(int targetRow, int targetCol, char opponentColor) {
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                ChessPiece piece = chessboard[row][col];
+                // Check if the piece belongs to the opponent
+                if (piece != null && piece.getType().charAt(0) == opponentColor) {
+                    if (canPieceAttack(piece, targetRow, targetCol)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+
+    private boolean canPieceAttack(ChessPiece piece, int targetRow, int targetCol) {
+        int rowDiff = Math.abs(piece.getRow() - targetRow);
+        int colDiff = Math.abs(piece.getCol() - targetCol);
+
+        switch (piece.getType().charAt(1)) { // Determine piece type (e.g., 'wq' for white queen)
+            case 'p': // Pawn
+                if (piece.getType().charAt(0) == 'w') {
+                    // White pawns attack diagonally upward
+                    return rowDiff == 1 && colDiff == 1 && (targetRow < piece.getRow());
+                } else {
+                    // Black pawns attack diagonally downward
+                    return rowDiff == 1 && colDiff == 1 && (targetRow > piece.getRow());
+                }
+            case 'r': // Rook
+                return (rowDiff == 0 || colDiff == 0) && isPathClear(piece, targetRow, targetCol);
+            case 'b': // Bishop
+                return rowDiff == colDiff && isPathClear(piece, targetRow, targetCol);
+            case 'q': // Queen
+                return (rowDiff == colDiff || rowDiff == 0 || colDiff == 0) && isPathClear(piece, targetRow, targetCol);
+            case 'k': // King
+                return rowDiff <= 1 && colDiff <= 1;
+            case 'n': // Knight
+                return (rowDiff == 2 && colDiff == 1) || (rowDiff == 1 && colDiff == 2);
+            default:
+                return false;
+        }
+    }
+
+
+    private boolean isPathClear(ChessPiece piece, int targetRow, int targetCol) {
+        int rowStep = Integer.compare(targetRow, piece.getRow());
+        int colStep = Integer.compare(targetCol, piece.getCol());
+
+        int currentRow = piece.getRow() + rowStep;
+        int currentCol = piece.getCol() + colStep;
+
+        while (currentRow != targetRow || currentCol != targetCol) {
+            if (chessboard[currentRow][currentCol] != null) {
+                return false; // Path is blocked
+            }
+            currentRow += rowStep;
+            currentCol += colStep;
+        }
+        return true;
+    }
+
+
+    private boolean canBypassCheck(ChessPiece king, ChessPiece checkingPiece) {
+        // Check if the king can move out of check
+        for (int row = king.getRow() - 1; row <= king.getRow() + 1; row++) {
+            for (int col = king.getCol() - 1; col <= king.getCol() + 1; col++) {
+                if (row >= 0 && row < 8 && col >= 0 && col < 8) {
+                    if (isValidMove(king, row, col) && !isSquareUnderAttack(row, col, checkingPiece.getType().charAt(0))) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Check if any other piece can capture the checking piece
+        char opponentColor = checkingPiece.getType().charAt(0) == 'w' ? 'b' : 'w';
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                ChessPiece currentPiece = chessboard[row][col];
+                if (currentPiece != null && currentPiece.getType().charAt(0) == opponentColor) {
+                    if (isValidMove(currentPiece, checkingPiece.getRow(), checkingPiece.getCol())) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Check if any piece can block the check
+        List<int[]> pathToKing = getPathToKing(checkingPiece, king);
+        for (int[] square : pathToKing) {
+            for (int row = 0; row < 8; row++) {
+                for (int col = 0; col < 8; col++) {
+                    ChessPiece currentPiece = chessboard[row][col];
+                    if (currentPiece != null && currentPiece.getType().charAt(0) == opponentColor) {
+                        if (isValidMove(currentPiece, square[0], square[1])) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isCheck(ChessPiece piece, int newRow, int newCol) {
         // Get the opponent's king
         ChessPiece opponentKing = getOpponentKing(piece.getType().charAt(0));
         System.out.println("opponentKing: " + opponentKing.getType() + " at " + opponentKing.getRow() + ", " + opponentKing.getCol());
+
         // 1. Direct check
         if (isValidMove(piece, opponentKing.getRow(), opponentKing.getCol())) {
             highlightKingSquare(opponentKing);
             return true;
         }
 
+        // Check if the king is still under attack due to other pieces
+        if (isSquareUnderAttack(opponentKing.getRow(), opponentKing.getCol(), piece.getType().charAt(0))) {
+            highlightKingSquare(opponentKing);
+            return true;
+        }
 
         // 2. Discovered check
         // Temporarily move the piece
         ChessPiece temp = chessboard[newRow][newCol];
         chessboard[newRow][newCol] = piece;
         chessboard[piece.getRow()][piece.getCol()] = null;
+        int originalRow = piece.getRow();
+        int originalCol = piece.getCol();
         piece.setRow(newRow);
         piece.setCol(newCol);
 
@@ -124,10 +251,10 @@ public class ChessboardController implements Initializable {
                 if (currentPiece != null && currentPiece.getType().charAt(0) == piece.getType().charAt(0)
                         && isValidMove(currentPiece, opponentKing.getRow(), opponentKing.getCol())) {
                     // Undo the move
-                    chessboard[piece.getRow()][piece.getCol()] = piece;
+                    chessboard[originalRow][originalCol] = piece;
                     chessboard[newRow][newCol] = temp;
-                    piece.setRow(row);
-                    piece.setCol(col);
+                    piece.setRow(originalRow);
+                    piece.setCol(originalCol);
                     highlightKingSquare(opponentKing);
                     return true;
                 }
@@ -135,43 +262,18 @@ public class ChessboardController implements Initializable {
         }
 
         // Undo the move
-        chessboard[piece.getRow()][piece.getCol()] = piece;
+        chessboard[originalRow][originalCol] = piece;
         chessboard[newRow][newCol] = temp;
-        piece.setRow(newRow);
-        piece.setCol(newCol);
+        piece.setRow(originalRow);
+        piece.setCol(originalCol);
 
-        // 3. En passant
-        // This will require additional logic to handle correctly
-        removeCheckHighlight(opponentKing);
-        return false;
-    }
-
-    private boolean isEnPass(ChessPiece piece, int newRow, int newCol) {
-        // Check if the move is valid and resolves the check situation
-        ChessPiece temp = chessboard[newRow][newCol];
-        chessboard[newRow][newCol] = piece;
-        chessboard[piece.getRow()][piece.getCol()] = null;
-        piece.setRow(newRow);
-        piece.setCol(newCol);
-
-        // Check if the king is still in check after the move
-        ChessPiece opponentKing = getOpponentKing(piece.getType().charAt(0));
-        boolean check = isCheck(piece, newRow, newCol);  // Recheck if the move leaves the king in check
-
-        // Undo the move
-        chessboard[piece.getRow()][piece.getCol()] = piece;
-        chessboard[newRow][newCol] = temp;
-        piece.setRow(newRow);
-        piece.setCol(newCol);
-
-        if (check) {
-            // Block the move if it doesn't resolve the check situation
-            System.out.println("Move does not escape check.");
-            return false;  // Cannot escape check
-        } else {
-            // Allow the move if it escapes the check
-            return true;  // Escape the check situation
+        // Only remove the highlight if it's the opponent's turn and their king is no longer under attack
+        char opponentColor = piece.getType().charAt(0) == 'w' ? 'b' : 'w';
+        if (!isSquareUnderAttack(opponentKing.getRow(), opponentKing.getCol(), opponentColor)) {
+            removeCheckHighlight(opponentKing);
         }
+
+        return false;
     }
 
     private void highlightKingSquare(ChessPiece king) {
@@ -315,18 +417,6 @@ public class ChessboardController implements Initializable {
             if (isCheck(chessPiece, newRow, newCol)) {
                 System.out.println("Check!");
             }
-
-            if (!isEnPass(chessPiece, newRow, newCol)) {
-                System.out.println("Move blocked due to check situation!");
-                newRow = draggedPieceOriginalRow;
-                newCol = draggedPieceOriginalCol;
-            } else {
-                System.out.println("Move is valid and passes check!");
-            }
-            // Check if the move puts the opponent in check
-
-
-            // Snap the piece to the final position
             final int targetRow = newRow;
             final int targetCol = newCol;
 
@@ -359,11 +449,6 @@ public class ChessboardController implements Initializable {
                 isWhiteTurn = !isWhiteTurn;
             }
 
-//            if (isCheck(chessPiece, targetRow, targetCol)) {
-//                System.out.println("Check!");
-//            }
-
-
             // Get image view of the target piece
             ImageView targetPieceImageView = null;
             if (newSquare != null && newSquare.getChildren().size() > 0) {
@@ -379,258 +464,161 @@ public class ChessboardController implements Initializable {
                 newSquare.getChildren().add(imageView);
             }
 
-
-//            capturePiece(chessPiece, targetRow, targetCol);
-
         });
     }
 
+    private boolean isKingInCheck(char playerColor) {
+        ChessPiece king = getKing(playerColor);
+        if (king == null) return false;
 
-    private void movePieceWithAnimation(ChessPiece piece, int newRow, int newCol) {
-        double targetX = newCol * (chessboardGrid.getWidth() / 8);
-        double targetY = newRow * (chessboardGrid.getHeight() / 8);
-
-        // TranslateTransition for smooth movement
-        TranslateTransition translateTransition = new TranslateTransition(Duration.millis(500), piece.getImageView());
-        translateTransition.setToX(targetX);
-        translateTransition.setToY(targetY);
-
-        // Timeline for bouncing effect
-        Timeline bounceTimeline = new Timeline();
-        KeyValue keyValueUp = new KeyValue(piece.getImageView().translateYProperty(), targetY - 10); // Up by 10 pixels
-        KeyValue keyValueDown = new KeyValue(piece.getImageView().translateYProperty(), targetY);
-
-        KeyFrame keyFrameUp = new KeyFrame(Duration.millis(400), keyValueUp);
-        KeyFrame keyFrameDown = new KeyFrame(Duration.millis(500), keyValueDown);
-
-        bounceTimeline.getKeyFrames().addAll(keyFrameUp, keyFrameDown);
-
-        // Play the animations in sequence
-        translateTransition.setOnFinished(event -> bounceTimeline.play());
-        translateTransition.play();
-
-        // Update chessboard state and reset position after animation
-        translateTransition.setOnFinished(event -> {
-            chessboard[piece.getRow()][piece.getCol()] = null;
-            chessboard[newRow][newCol] = piece;
-            piece.setRow(newRow);
-            piece.setCol(newCol);
-
-            piece.getImageView().setTranslateX(targetX);
-            piece.getImageView().setTranslateY(targetY);
-
-            Pane targetSquare = getSquare(newRow, newCol);
-            if (targetSquare != null) {
-                targetSquare.getChildren().add(piece.getImageView());
-            }
-        });
+        char opponentColor = (playerColor == 'w') ? 'b' : 'w';
+        return isSquareUnderAttack(king.getRow(), king.getCol(), opponentColor);
     }
-
 
     private boolean isValidMove(ChessPiece piece, int newRow, int newCol) {
-        // white moves first
-        if (isWhiteTurn && piece.getType().charAt(0) == 'b') {
-            return false;
-        } else if (!isWhiteTurn && piece.getType().charAt(0) == 'w') {
+        if (!isWithinBounds(newRow, newCol)) {
             return false;
         }
 
-        // Check if the new position is within the bounds of the chessboard
-        if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) {
+        if (!isPlayerTurn(piece)) {
             return false;
         }
 
-        // Check if the destination square is occupied by a piece of the same color
         ChessPiece targetPiece = chessboard[newRow][newCol];
-        if (targetPiece != null && targetPiece.getType().charAt(0) == piece.getType().charAt(0)) {
-            return false; // Prevent moving to a square occupied by a piece of the same color
+        if (isFriendlyFire(piece, targetPiece)) {
+            return false;
         }
 
+        // Temporarily make the move
+        ChessPiece temp = chessboard[newRow][newCol];
+        int originalRow = piece.getRow();
+        int originalCol = piece.getCol();
 
-        // Pawn movement logic
-        if (piece.getType().charAt(1) == 'p') {
-            int direction = piece.getType().charAt(0) == 'w' ? -1 : 1; // White moves up (-1), Black moves down (+1)
-            int startRow = piece.getType().charAt(0) == 'w' ? 6 : 1;    // White pawns start at row 6, Black at row 1
-
-            // Move forward 1 square
-            if (newCol == piece.getCol() && newRow == piece.getRow() + direction) {
-                return targetPiece == null; // The square must be empty
-            }
-
-            // Move forward 2 squares from the initial position
-            if (newCol == piece.getCol() && piece.getRow() == startRow && newRow == piece.getRow() + 2 * direction) {
-                return targetPiece == null && chessboard[piece.getRow() + direction][newCol] == null; // Both squares must be empty
-            }
-
-            // Diagonal capture
-            if (Math.abs(newCol - piece.getCol()) == 1 && newRow == piece.getRow() + direction) {
-                return targetPiece != null && targetPiece.getType().charAt(0) != piece.getType().charAt(0); // Must capture opposite color
-            }
-
-
-            return false; // All other moves are invalid for a pawn
-        }
-
-        // Rook movement logic
-        if (piece.getType().charAt(1) == 'r') {
-            // Rooks can move horizontally or vertically
-            if (newRow != piece.getRow() && newCol != piece.getCol()) {
-                return false; // Rooks cannot move diagonally
-            }
-
-            // Check for obstructions along the path
-            int rowStep = newRow == piece.getRow() ? 0 : (newRow > piece.getRow() ? 1 : -1);
-            int colStep = newCol == piece.getCol() ? 0 : (newCol > piece.getCol() ? 1 : -1);
-
-            int currentRow = piece.getRow() + rowStep;
-            int currentCol = piece.getCol() + colStep;
-
-            while (currentRow != newRow || currentCol != newCol) {
-                if (chessboard[currentRow][currentCol] != null) {
-                    return false; // Path is obstructed
-                }
-                currentRow += rowStep;
-                currentCol += colStep;
-            }
-
-            return targetPiece == null || targetPiece.getType().charAt(0) != piece.getType().charAt(0); // Must be empty or capture opposite color
-
-        }
-
-        // Knight movement logic
-        if (piece.getType().charAt(1) == 'n') {
-            // Knights move in an L-shape: 2 squares in one direction, then 1 square perpendicular
-            int rowDiff = Math.abs(newRow - piece.getRow());
-            int colDiff = Math.abs(newCol - piece.getCol());
-
-            return (rowDiff == 2 && colDiff == 1) || (rowDiff == 1 && colDiff == 2); // Valid L-shape
-        }
-
-        // Bishop movement logic
-        if (piece.getType().charAt(1) == 'b') {
-            // Bishops move diagonally
-            if (Math.abs(newRow - piece.getRow()) != Math.abs(newCol - piece.getCol())) {
-                return false; // Bishops must move diagonally
-            }
-
-            // Check for obstructions along the path
-            int rowStep = newRow > piece.getRow() ? 1 : -1;
-            int colStep = newCol > piece.getCol() ? 1 : -1;
-
-            int currentRow = piece.getRow() + rowStep;
-            int currentCol = piece.getCol() + colStep;
-
-            while (currentRow != newRow || currentCol != newCol) {
-                if (chessboard[currentRow][currentCol] != null) {
-                    return false; // Path is obstructed
-                }
-                currentRow += rowStep;
-                currentCol += colStep;
-            }
-
-            return targetPiece == null || targetPiece.getType().charAt(0) != piece.getType().charAt(0); // Must be empty or capture opposite color
-        }
-
-        // Queen movement logic
-        if (piece.getType().charAt(1) == 'q') {
-            // Queens can move horizontally, vertically, or diagonally
-            if (newRow != piece.getRow() && newCol != piece.getCol() && Math.abs(newRow - piece.getRow()) != Math.abs(newCol - piece.getCol())) {
-                return false; // Queens must move in a straight line
-            }
-
-            // Check for obstructions along the path
-            int rowStep = newRow == piece.getRow() ? 0 : (newRow > piece.getRow() ? 1 : -1);
-            int colStep = newCol == piece.getCol() ? 0 : (newCol > piece.getCol() ? 1 : -1);
-
-            int currentRow = piece.getRow() + rowStep;
-            int currentCol = piece.getCol() + colStep;
-
-            while (currentRow != newRow || currentCol != newCol) {
-                if (chessboard[currentRow][currentCol] != null) {
-                    return false; // Path is obstructed
-                }
-                currentRow += rowStep;
-                currentCol += colStep;
-            }
-
-            return targetPiece == null || targetPiece.getType().charAt(0) != piece.getType().charAt(0); // Must be empty or capture opposite color
-        }
-
-        // King movement logic
-        if (piece.getType().charAt(1) == 'k') {
-            // Kings can move 1 square in any direction
-            int rowDiff = Math.abs(newRow - piece.getRow());
-            int colDiff = Math.abs(newCol - piece.getCol());
-
-            return rowDiff <= 1 && colDiff <= 1; // Valid 1-square move
-        }
-
-
-        return true;
-    }
-
-    private void movePiece(ChessPiece piece, int newRow, int newCol) {
-        // Remove the piece from the original position in the array
-        chessboard[piece.getRow()][piece.getCol()] = null;
-
-        // If capturing a piece, remove it from the board
-        ChessPiece targetPiece = chessboard[newRow][newCol];
-        if (targetPiece != null) {
-            Pane targetSquare = getSquare(newRow, newCol);
-            if (targetSquare != null) {
-                targetSquare.getChildren().remove(targetPiece.getImageView());
-            }
-        }
-
-        // Update the piece's position
+        chessboard[originalRow][originalCol] = null;
         chessboard[newRow][newCol] = piece;
         piece.setRow(newRow);
         piece.setCol(newCol);
 
-        // Reset the translation to align with the grid
-        piece.getImageView().setTranslateX(0);
-        piece.getImageView().setTranslateY(0);
+        // Check if the king is in check after the move
+        boolean isKingSafe = !isKingInCheck(piece.getType().charAt(0));
 
-        // Update the visual position on the board
-        Pane targetSquare = getSquare(newRow, newCol);
-        if (targetSquare != null) {
-            targetSquare.getChildren().add(piece.getImageView());
+        // Undo the move
+        chessboard[newRow][newCol] = temp;
+        chessboard[originalRow][originalCol] = piece;
+        piece.setRow(originalRow);
+        piece.setCol(originalCol);
+
+        if (!isKingSafe) {
+            return false;
+        }
+
+        // Validate based on piece type
+        switch (piece.getType().charAt(1)) {
+            case 'p': // Pawn
+                return isValidPawnMove(piece, newRow, newCol, targetPiece);
+            case 'r': // Rook
+                return isValidRookMove(piece, newRow, newCol);
+            case 'n': // Knight
+                return isValidKnightMove(piece, newRow, newCol);
+            case 'b': // Bishop
+                return isValidBishopMove(piece, newRow, newCol);
+            case 'q': // Queen
+                return isValidQueenMove(piece, newRow, newCol);
+            case 'k': // King
+                return isValidKingMove(piece, newRow, newCol);
+            default:
+                return false;
         }
     }
 
-
-    private void resetPiecePosition(ChessPiece piece) {
-        // Reset translation to zero
-        piece.getImageView().setTranslateX(0);
-        piece.getImageView().setTranslateY(0);
-
-        // Find the original Pane
-        Pane originalSquare = getSquare(draggedPieceOriginalRow, draggedPieceOriginalCol);
-
-        if (originalSquare != null) {
-            // Remove the ImageView from its current parent if necessary
-            if (piece.getImageView().getParent() != null) {
-                Pane currentParent = (Pane) piece.getImageView().getParent();
-                currentParent.getChildren().remove(piece.getImageView());
-            }
-
-            // Add the ImageView back to the original Pane
-            if (!originalSquare.getChildren().contains(piece.getImageView())) {
-                originalSquare.getChildren().add(piece.getImageView());
-            }
-        }
+    private boolean isWithinBounds(int row, int col) {
+        return row >= 0 && row < 8 && col >= 0 && col < 8;
     }
 
+    private boolean isPlayerTurn(ChessPiece piece) {
+        return (isWhiteTurn && piece.getType().charAt(0) == 'w') || (!isWhiteTurn && piece.getType().charAt(0) == 'b');
+    }
+
+    private boolean isFriendlyFire(ChessPiece piece, ChessPiece targetPiece) {
+        return targetPiece != null && targetPiece.getType().charAt(0) == piece.getType().charAt(0);
+    }
+
+    private boolean isValidPawnMove(ChessPiece piece, int newRow, int newCol, ChessPiece targetPiece) {
+        int direction = piece.getType().charAt(0) == 'w' ? -1 : 1;
+        int startRow = piece.getType().charAt(0) == 'w' ? 6 : 1;
+
+        if (newCol == piece.getCol() && newRow == piece.getRow() + direction) {
+            return targetPiece == null;
+        }
+
+        if (newCol == piece.getCol() && piece.getRow() == startRow && newRow == piece.getRow() + 2 * direction) {
+            return targetPiece == null && chessboard[piece.getRow() + direction][newCol] == null;
+        }
+
+        if (Math.abs(newCol - piece.getCol()) == 1 && newRow == piece.getRow() + direction) {
+            return targetPiece != null && targetPiece.getType().charAt(0) != piece.getType().charAt(0);
+        }
+
+        return false;
+    }
+
+    private boolean isValidRookMove(ChessPiece piece, int newRow, int newCol) {
+        if (newRow != piece.getRow() && newCol != piece.getCol()) {
+            return false;
+        }
+        return isPathClear(piece.getRow(), piece.getCol(), newRow, newCol);
+    }
+
+    private boolean isValidKnightMove(ChessPiece piece, int newRow, int newCol) {
+        int rowDiff = Math.abs(newRow - piece.getRow());
+        int colDiff = Math.abs(newCol - piece.getCol());
+        return (rowDiff == 2 && colDiff == 1) || (rowDiff == 1 && colDiff == 2);
+    }
+
+    private boolean isValidBishopMove(ChessPiece piece, int newRow, int newCol) {
+        if (Math.abs(newRow - piece.getRow()) != Math.abs(newCol - piece.getCol())) {
+            return false;
+        }
+        return isPathClear(piece.getRow(), piece.getCol(), newRow, newCol);
+    }
+
+    private boolean isValidQueenMove(ChessPiece piece, int newRow, int newCol) {
+        if (newRow != piece.getRow() && newCol != piece.getCol() &&
+                Math.abs(newRow - piece.getRow()) != Math.abs(newCol - piece.getCol())) {
+            return false;
+        }
+        return isPathClear(piece.getRow(), piece.getCol(), newRow, newCol);
+    }
+
+    private boolean isValidKingMove(ChessPiece piece, int newRow, int newCol) {
+        int rowDiff = Math.abs(newRow - piece.getRow());
+        int colDiff = Math.abs(newCol - piece.getCol());
+        return rowDiff <= 1 && colDiff <= 1;
+    }
+
+    private boolean isPathClear(int startRow, int startCol, int endRow, int endCol) {
+        int rowStep = Integer.compare(endRow, startRow);
+        int colStep = Integer.compare(endCol, startCol);
+
+        int currentRow = startRow + rowStep;
+        int currentCol = startCol + colStep;
+
+        while (currentRow != endRow || currentCol != endCol) {
+            if (chessboard[currentRow][currentCol] != null) {
+                return false; // Path is obstructed
+            }
+            currentRow += rowStep;
+            currentCol += colStep;
+        }
+
+        return true;
+    }
 
     private Pane getSquare(int row, int col) {
         for (Node node : chessboardGrid.getChildren()) {
             if (GridPane.getRowIndex(node) == row && GridPane.getColumnIndex(node) == col) {
                 return (Pane) node;
             }
-            // know value row and col,
-            // go through every single node/pane in the gridpane
-            // if the row and col of the node is the same as the row and col we are looking for
-            // return the node/pane
         }
         return null;
     }
