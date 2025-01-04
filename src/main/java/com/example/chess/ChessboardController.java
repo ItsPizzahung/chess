@@ -261,6 +261,8 @@ public class ChessboardController implements Initializable {
             }
         }
 
+
+
         // Undo the move
         chessboard[originalRow][originalCol] = piece;
         chessboard[newRow][newCol] = temp;
@@ -359,6 +361,7 @@ public class ChessboardController implements Initializable {
 
         // When mouse is pressed, apply floating effect and show available moves
         imageView.setOnMousePressed(event -> {
+
             scaleUp.play();
             draggedPiece = chessPiece;
             draggedPieceOriginalRow = chessPiece.getRow();
@@ -374,6 +377,18 @@ public class ChessboardController implements Initializable {
             // Show available moves
             showAvailableMoves(chessPiece);
 
+
+            char playerColor = chessPiece.getType().charAt(0);
+//            if (isKingInCheck(playerColor)) {
+//                System.out.println("King is in check!");
+//                // highlight check
+//                highlightKingSquare(getKing(playerColor));
+//            }
+//            if (!isKingInCheck(playerColor)) {
+//                System.out.println("King is in check!");
+//                // remove check highlight
+//                removeCheckHighlight(getKing(playerColor));
+//            }
 
         });
 
@@ -413,6 +428,9 @@ public class ChessboardController implements Initializable {
             chessPiece.setRow(newRow);
             chessPiece.setCol(newCol);
 
+//            if (!isCheck(chessPiece, newRow, newCol)) {
+//                removeCheckHighlight(getOpponentKing(chessPiece.getType().charAt(0)));
+//            }
 
             if (isCheck(chessPiece, newRow, newCol)) {
                 System.out.println("Check!");
@@ -462,6 +480,28 @@ public class ChessboardController implements Initializable {
 
             if (newSquare != null) {
                 newSquare.getChildren().add(imageView);
+            }
+
+//            if (!isCheck(chessPiece, newRow, newCol)) {
+//                removeCheckHighlight(getOpponentKing(chessPiece.getType().charAt(0)));
+//            }
+
+            char playerColor = chessPiece.getType().charAt(0);
+            if (isKingInCheck(playerColor)) {
+                System.out.println("King is in check!");
+                // highlight check
+                highlightKingSquare(getKing(playerColor));
+            }
+            if (isCheck(chessPiece, newRow, newCol)) {
+                highlightKingSquare(getKing(playerColor));
+            }
+            if (!isKingInCheck(playerColor)) {
+                System.out.println("King is not in check!");
+                // remove check highlight
+                removeCheckHighlight(getKing(playerColor));
+            }
+            if (!isCheck(chessPiece, newRow, newCol)) {
+                removeCheckHighlight(getOpponentKing(chessPiece.getType().charAt(0)));
             }
 
         });
