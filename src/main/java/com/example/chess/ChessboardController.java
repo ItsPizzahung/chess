@@ -1,6 +1,7 @@
 package com.example.chess;
 
 import javafx.animation.*;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
@@ -669,14 +670,22 @@ public class ChessboardController implements Initializable {
             // Add the new promoted piece's image
             square.getChildren().add(promotedPiece.getImageView());
         }
+
+        Platform.runLater(() -> {
+            square.getChildren().clear();
+            square.getChildren().add(promotedPiece.getImageView());
+        });
+
+        setupPieceDragAndDrop(promotedPiece);
+
     }
 
 
     private ImageView createPieceImage(String type) {
         Image image = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/pieces/" + type + ".png")));
         ImageView imageView = new ImageView(image);
-        imageView.setFitWidth(50);  // Set appropriate size
-        imageView.setFitHeight(50);
+        imageView.setFitWidth(100);  // Set appropriate size
+        imageView.setFitHeight(100);
         return imageView;
     }
 }
