@@ -4,6 +4,7 @@ import javafx.animation.*;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
@@ -413,7 +414,9 @@ public class ChessboardController implements Initializable {
             chessPiece.setRow(newRow);
             chessPiece.setCol(newCol);
 
-
+            if (chessPiece.getType().charAt(1) == 'p') {
+                handlePawnPromotion(chessPiece);
+            }
             if (isCheck(chessPiece, newRow, newCol)) {
                 System.out.println("Check!");
             }
@@ -457,13 +460,12 @@ public class ChessboardController implements Initializable {
 
             // Remove the target piece from the board
             if (targetPieceImageView != null) {
-                newSquare.getChildren().remove(targetPieceImageView);
+                    newSquare.getChildren().remove(targetPieceImageView);
             }
 
             if (newSquare != null) {
                 newSquare.getChildren().add(imageView);
             }
-
         });
     }
 
@@ -621,5 +623,60 @@ public class ChessboardController implements Initializable {
             }
         }
         return null;
+    }
+
+    private void handlePawnPromotion(ChessPiece pawn) {
+        if ((pawn.getType().charAt(0) == 'w' && pawn.getRow() == 0) ||
+                (pawn.getType().charAt(0) == 'b' && pawn.getRow() == 7)) {
+            promptPromotion(pawn);
+        }
+    }
+
+    private void promptPromotion(ChessPiece pawn) {
+        // Example using JavaFX ChoiceDialog
+        List<String> options = List.of("Queen", "Rook", "Bishop", "Knight");
+        ChoiceDialog<String> dialog = new ChoiceDialog<>("Queen", options);
+        dialog.setTitle("Pawn Promotion");
+        dialog.setHeaderText("Promote your pawn!");
+        dialog.setContentText("Choose a piece:");
+
+        dialog.showAndWait().ifPresent(choice -> {
+            switch (choice) {
+                case "Queen" -> promotePawn(pawn, "q");
+                case "Rook" -> promotePawn(pawn, "r");
+                case "Bishop" -> promotePawn(pawn, "b");
+                case "Knight" -> promotePawn(pawn, "n");
+            }
+        });
+    }
+
+    private void promotePawn(ChessPiece pawn, String newPieceType) {
+        char playerColor = pawn.getType().charAt(0); // 'w' or 'b'
+        String newType = playerColor + newPieceType; // e.g., "wq" for white queen
+
+        // Create a new ChessPiece object for the promoted piece
+        ChessPiece promotedPiece = new ChessPiece(newType, pawn.getRow(), pawn.getCol(), createPieceImage(newType));
+
+        // Update the chessboard model
+        chessboard[pawn.getRow()][pawn.getCol()] = promotedPiece;
+
+        // Update the UI
+        Pane square = getSquare(pawn.getRow(), pawn.getCol());
+        if (square != null) {
+            // Clear the square of the old pawn's image
+            square.getChildren().clear();
+
+            // Add the new promoted piece's image
+            square.getChildren().add(promotedPiece.getImageView());
+        }
+    }
+
+
+    private ImageView createPieceImage(String type) {
+        Image image = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/pieces/" + type + ".png")));
+        ImageView imageView = new ImageView(image);
+        imageView.setFitWidth(50);  // Set appropriate size
+        imageView.setFitHeight(50);
+        return imageView;
     }
 }
