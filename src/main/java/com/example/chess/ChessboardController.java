@@ -1,6 +1,6 @@
 package com.example.chess;
 
-import javafx.animation.*;
+import javafx.animation.ScaleTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -15,6 +15,7 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.net.URL;
@@ -488,7 +489,8 @@ public class ChessboardController implements Initializable {
             }
 
             if (isCheckmate(isWhiteTurn ? 'w' : 'b')) {
-                handleCheckmate(isWhiteTurn ? 'w' : 'b');
+                handleCheckmate(isWhiteTurn ? 'b' : 'w');
+
             }
 
         });
@@ -720,12 +722,37 @@ public class ChessboardController implements Initializable {
         return true; // Checkmate if no legal moves can save the king
     }
 
+    private void restartApplication() {
+        Platform.runLater(() -> {
+            try {
+                // 1. Get the current stage
+                Stage currentStage = (Stage) chessboardGrid.getScene().getWindow();
+
+                // 2. Close the current stage
+                currentStage.close();
+
+                // 3. Create a new instance of your application
+                ChessApplication newApp = new ChessApplication();
+
+                // 4. Start the new application on a new stage
+                Stage newStage = new Stage();
+                newApp.start(newStage);
+
+            } catch (Exception e) {
+                e.printStackTrace(); // Handle exceptions appropriately
+            }
+        });
+    }
     private void handleCheckmate(char winner) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Checkmate!");
         alert.setHeaderText(null);
         alert.setContentText(winner == 'w' ? "White wins!" : "Black wins!");
         alert.showAndWait();
+
+
+
+        restartApplication();
     }
 
     private boolean isKingInCheckAfterMove(ChessPiece piece, int newRow, int newCol) {
