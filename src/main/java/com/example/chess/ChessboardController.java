@@ -5,7 +5,10 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceDialog;
+import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
@@ -32,6 +35,12 @@ public class ChessboardController implements Initializable {
     private boolean isWhiteTurn = true;
     int pRow;
     int pCol;
+
+    @FXML
+    private Label checkmateLabel = new Label();
+
+    @FXML
+    private Button newGameButton; // Add this for the "New Game" button
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         setupChessboardGrid();
@@ -263,8 +272,6 @@ public class ChessboardController implements Initializable {
             }
         }
 
-
-
         // Undo the move
         chessboard[originalRow][originalCol] = piece;
         chessboard[newRow][newCol] = temp;
@@ -375,22 +382,8 @@ public class ChessboardController implements Initializable {
             Pane currentSquare = getSquare(draggedPieceOriginalRow, draggedPieceOriginalCol);
             currentSquare.toFront();
 
-
             // Show available moves
             showAvailableMoves(chessPiece);
-
-
-            char playerColor = chessPiece.getType().charAt(0);
-//            if (isKingInCheck(playerColor)) {
-//                System.out.println("King is in check!");
-//                // highlight check
-//                highlightKingSquare(getKing(playerColor));
-//            }
-//            if (!isKingInCheck(playerColor)) {
-//                System.out.println("King is in check!");
-//                // remove check highlight
-//                removeCheckHighlight(getKing(playerColor));
-//            }
 
         });
 
@@ -415,24 +408,16 @@ public class ChessboardController implements Initializable {
             int newCol = (int) ((sceneX - chessboardGrid.getLayoutX()) / cellWidth);
             int newRow = (int) ((sceneY - chessboardGrid.getLayoutY()) / cellHeight);
 
-            // Ensure the piece lands within the board boundaries and follows game rules
             if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8 || !isValidMove(chessPiece, newRow, newCol)) {
                 newRow = draggedPieceOriginalRow;
                 newCol = draggedPieceOriginalCol;
 
             }
-            // Check if the current player is in check before making the move
 
-
-            // Snap the piece to the final position
             chessboard[draggedPieceOriginalRow][draggedPieceOriginalCol] = null;
             chessboard[newRow][newCol] = chessPiece;
             chessPiece.setRow(newRow);
             chessPiece.setCol(newCol);
-
-//            if (!isCheck(chessPiece, newRow, newCol)) {
-//                removeCheckHighlight(getOpponentKing(chessPiece.getType().charAt(0)));
-//            }
 
             if (chessPiece.getType().charAt(1) == 'p') {
                 handlePawnPromotion(chessPiece);
@@ -451,7 +436,6 @@ public class ChessboardController implements Initializable {
             imageView.setTranslateX(0);
             imageView.setTranslateY(0);
 
-            // remove available moves
             for (Node node : chessboardGrid.getChildren()) {
                 if (node instanceof Pane) {
                     Pane square = (Pane) node;
@@ -460,7 +444,6 @@ public class ChessboardController implements Initializable {
             }
 
 
-            // Add the piece to the new square
             Pane currentSquare = getSquare(draggedPieceOriginalRow, draggedPieceOriginalCol);
             Pane newSquare = getSquare(targetRow, targetCol);
 
@@ -487,14 +470,9 @@ public class ChessboardController implements Initializable {
                 newSquare.getChildren().add(imageView);
             }
 
-//            if (!isCheck(chessPiece, newRow, newCol)) {
-//                removeCheckHighlight(getOpponentKing(chessPiece.getType().charAt(0)));
-//            }
-
             char playerColor = chessPiece.getType().charAt(0);
             if (isKingInCheck(playerColor)) {
                 System.out.println("King is in check!");
-                // highlight check
                 highlightKingSquare(getKing(playerColor));
             }
             if (isCheck(chessPiece, newRow, newCol)) {
@@ -507,6 +485,10 @@ public class ChessboardController implements Initializable {
             }
             if (!isCheck(chessPiece, newRow, newCol)) {
                 removeCheckHighlight(getOpponentKing(chessPiece.getType().charAt(0)));
+            }
+
+            if (isCheckmate(isWhiteTurn ? 'w' : 'b')) {
+                handleCheckmate(isWhiteTurn ? 'w' : 'b');
             }
 
         });
@@ -544,10 +526,8 @@ public class ChessboardController implements Initializable {
         piece.setRow(newRow);
         piece.setCol(newCol);
 
-        // Check if the king is in check after the move
         boolean isKingSafe = !isKingInCheck(piece.getType().charAt(0));
 
-        // Undo the move
         chessboard[newRow][newCol] = temp;
         chessboard[originalRow][originalCol] = piece;
         piece.setRow(originalRow);
@@ -557,7 +537,6 @@ public class ChessboardController implements Initializable {
             return false;
         }
 
-        // Validate based on piece type
         switch (piece.getType().charAt(1)) {
             case 'p': // Pawn
                 return isValidPawnMove(piece, newRow, newCol, targetPiece);
@@ -697,19 +676,14 @@ public class ChessboardController implements Initializable {
         char playerColor = pawn.getType().charAt(0); // 'w' or 'b'
         String newType = playerColor + newPieceType; // e.g., "wq" for white queen
 
-        // Create a new ChessPiece object for the promoted piece
         ChessPiece promotedPiece = new ChessPiece(newType, pawn.getRow(), pawn.getCol(), createPieceImage(newType));
 
-        // Update the chessboard model
         chessboard[pawn.getRow()][pawn.getCol()] = promotedPiece;
 
-        // Update the UI
         Pane square = getSquare(pawn.getRow(), pawn.getCol());
         if (square != null) {
-            // Clear the square of the old pawn's image
             square.getChildren().clear();
 
-            // Add the new promoted piece's image
             square.getChildren().add(promotedPiece.getImageView());
         }
 
@@ -722,11 +696,63 @@ public class ChessboardController implements Initializable {
 
     }
 
+    private boolean isCheckmate(char playerColor) {
+        if (!isKingInCheck(playerColor)) {
+            return false; // Not checkmate if king is not in check
+        }
+
+        // Check if any legal move can get the king out of check
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                ChessPiece piece = chessboard[row][col];
+                if (piece != null && piece.getType().charAt(0) == playerColor) {
+                    for (int newRow = 0; newRow < 8; newRow++) {
+                        for (int newCol = 0; newCol < 8; newCol++) {
+                            if (isValidMove(piece, newRow, newCol) && !isKingInCheckAfterMove(piece, newRow, newCol)) {
+                                return false; // Not checkmate if a valid move exists
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return true; // Checkmate if no legal moves can save the king
+    }
+
+    private void handleCheckmate(char winner) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Checkmate!");
+        alert.setHeaderText(null);
+        alert.setContentText(winner == 'w' ? "White wins!" : "Black wins!");
+        alert.showAndWait();
+    }
+
+    private boolean isKingInCheckAfterMove(ChessPiece piece, int newRow, int newCol) {
+        // Temporarily make the move
+        ChessPiece temp = chessboard[newRow][newCol];
+        int originalRow = piece.getRow();
+        int originalCol = piece.getCol();
+        chessboard[originalRow][originalCol] = null;
+        chessboard[newRow][newCol] = piece;
+        piece.setRow(newRow);
+        piece.setCol(newCol);
+
+        boolean kingInCheck = isKingInCheck(piece.getType().charAt(0));
+
+        // Undo the move
+        chessboard[newRow][newCol] = temp;
+        chessboard[originalRow][originalCol] = piece;
+        piece.setRow(originalRow);
+        piece.setCol(originalCol);
+
+        return kingInCheck;
+    }
 
     private ImageView createPieceImage(String type) {
         Image image = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/pieces/" + type + ".png")));
         ImageView imageView = new ImageView(image);
-        imageView.setFitWidth(100);  // Set appropriate size
+        imageView.setFitWidth(100);
         imageView.setFitHeight(100);
         return imageView;
     }
